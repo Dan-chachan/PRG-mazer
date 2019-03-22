@@ -23,7 +23,7 @@ PLAYER_COL = PINK
 # ---------------------- COLORS
 
 content = {
-    "FREE": " ",
+    "FREE": ".",
     "BASE": "B",
     "WALL": "X",
     "PLAYER": "P",

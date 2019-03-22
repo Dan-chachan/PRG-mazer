@@ -46,6 +46,7 @@ class Player(Creature):
         if self.maze.isFree(coords):
             print("moving..")
             self.maze.place(coords, content["PLAYER"])
+            self.maze.get((self.x, self.y)).remove(content["PLAYER"])
             self.setPos(coords)
         else:
             print("not moving..")
@@ -81,13 +82,13 @@ class Maze:
         self.create_maze()
         self.place_exits()
 
-        # previous levels
+        # previous levels TODO
         self.currentLevel = self.board
 
         self.player = None
         self.init_player()
 
-
+    # ~~~~~~~ INIT ~~~~~~~~
     def create_board(self):
         for y in range(0, self.size):
             self.board.append([])
@@ -124,7 +125,7 @@ class Maze:
             toBuildOn = self.get(coords)
 
             if (build_dir in "leftright"):                
-                while (toBuildOn.content != content["WALL"]):
+                while (toBuildOn.get() != content["WALL"]):
                     self.place(coords, content["WALL"])
 
                     x = x - 1 if build_dir == "left" else x + 1
@@ -132,7 +133,7 @@ class Maze:
                     toBuildOn = self.get(coords)
 
             elif (build_dir in "updown"):
-                while (toBuildOn.content != content["WALL"]):
+                while (toBuildOn.get() != content["WALL"]):
                     self.place(coords, content["WALL"])
 
                     y = y - 1 if build_dir == "up" else y + 1
@@ -144,36 +145,7 @@ class Maze:
             baseAmount -= 1
 
         return self.board
-
-
-    def draw(self):
-       
-        # make automatic with classes?
-
-        y = 0
-        for row in self.board:
-            x = 0
-            for spot in row:
-                spot = spot.content
-                if type(spot) == str:
-                    if spot == content["WALL"]:
-                        color = WALL_COL 
-                    elif spot == content["FREE"]:
-                        color = BACK_COL
-                    elif spot == content["ENTRY"]:
-                        color = ENTRY_COL
-                    elif spot == content["EXIT"]:
-                        color = EXIT_COL
-
-                elif isinstance(spot, Player):
-                    color = PLAYER_COL
-                   
-                pygame.draw.rect(screen, color, 
-                                 [x, y, GRID_SIZE, GRID_SIZE])
-
-                x += GRID_SIZE
-            y += GRID_SIZE
-
+    
     def place_exits(self):
         sz = self.size
 
@@ -203,7 +175,6 @@ class Maze:
         self.place((x, y), content["ENTRY"])
         self.entryCoords = (x, y)
 
-
     def init_player(self):
         if self.entryCoords is not None:
 
@@ -216,6 +187,36 @@ class Maze:
             self.playerCoords = self.entryCoords
         else:
             print("Player could not be placed")
+    # ~~~~~~~ INIT ~~~~~~~~
+
+    def draw(self):
+       
+        # make automatic with classes?
+
+        y = 0
+        for row in self.board:
+            x = 0
+            for spot in row:
+                color = RED
+                spot = spot.get()
+                
+                if type(spot) == str:
+                    if spot == content["WALL"]:
+                        color = WALL_COL 
+                    elif spot == content["FREE"]:
+                        color = BACK_COL
+                    elif spot == content["ENTRY"]:
+                        color = ENTRY_COL
+                    elif spot == content["EXIT"]:
+                        color = EXIT_COL
+                    elif spot == content["PLAYER"]:
+                        color = PLAYER_COL
+                   
+                pygame.draw.rect(screen, color, 
+                                 [x, y, GRID_SIZE, GRID_SIZE])
+
+                x += GRID_SIZE
+            y += GRID_SIZE
 
 
     def get(self, coords):
@@ -229,14 +230,18 @@ class Maze:
             return None
 
     def place(self, coords, thing):
-        if thing in content.values() and self.checkCoords(coords):
-            x = coords[0]
-            y = coords[1]
+        if (thing in content.values() and self.checkCoords(coords)):
+            spot = self.get(coords)
+            if spot is not None:
+                x = coords[0]
+                y = coords[1]
 
-            self.board[y][x] = Cell(x, y, thing)
+                self.board[y][x] = Cell(x, y, thing)
 
-            if thing is content["PLAYER"]:
-                self.playerCoords = (x, y)
+                if thing is content["PLAYER"]:
+                    self.playerCoords = (x, y)
+            else:
+                spot.add(thing)
         else:
             print("Thing can not be placed")
 
@@ -249,8 +254,8 @@ class Maze:
 
     def isFree(self, coords):
         if self.checkCoords(coords):
-            print("checking coords ", coords)
-            toCheck = self.get(coords).content
+            #print("checking coords ", coords)
+            toCheck = self.get(coords).get()
 
             if toCheck == content["WALL"]:
                 return False
@@ -270,17 +275,26 @@ class Maze:
 
 # TODO multiple things in one cell
 class Cell:
-    def __init__(self, x, y, c = content["FREE"]):
-        self.content = []
+    def __init__(self, x, y, c=content["FREE"]):
+        self.content = [c]
 
         self.coords = (x, y)
     
     def add(self, newcont):
-        if newcont in content:
-            self.content += newcont
+        # TODO redundant?
+        if newcont in content.values():
+            self.content.append(newcont)
         else:
             print("Invalid content")
-            
+
+    def remove(self, oldcont):
+        if oldcont in self.content:
+            self.content.remove(oldcont)
+
+        if len(self.content) < 1:
+            print("adding filler")
+            self.add(content["FREE"])
+
     def get(self):
         if content["PLAYER"] in self.content:
             return content["PLAYER"]
