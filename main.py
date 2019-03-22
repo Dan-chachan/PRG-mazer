@@ -27,7 +27,6 @@ while not done:
         if event.type == pygame.QUIT:  # If user clicked close
             done = True  # Flag that we are done so we exit this loop
         elif event.type == pygame.KEYDOWN:
-            pretty_print(new_maze.board)
             if event.key == pygame.K_UP:
                 new_maze.player.move('U')
             elif event.key == pygame.K_DOWN:

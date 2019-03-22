@@ -10,8 +10,6 @@ class Creature:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.sprite = "C"
-        self.type = "undefined"
 
         self.hp = 0
         self.str = 0
@@ -32,16 +30,13 @@ class Creature:
         return (x, y)
 
 class Player(Creature):
-    def __init__(self, maze):
-        self.x = None
-        self.y = None
+    def __init__(self, maze, x, y):
+        self.x = x
+        self.y = y
 
         self.hp = 25
         self.str = 5
         self.dex = 5
-
-        self.sprite = "P"
-        self.type = "player"
 
         self.maze = maze
 
@@ -49,9 +44,13 @@ class Player(Creature):
         coords = self.dir_to_coor(direction)
 
         if self.maze.isFree(coords):
-            self.maze.movePlayer(coords)
+            print("moving..")
+            self.maze.place(coords, content["PLAYER"])
+            self.setPos(coords)
+        else:
+            print("not moving..")
 
-    def setPosition(self, coords):
+    def setPos(self, coords):
         self.x = coords[0]
         self.y = coords[1]
 
@@ -61,6 +60,7 @@ class Maze:
         self.size = MAZE_SIZE
         
         global content
+        # redundant?
         self.content = content
 
         self.board = []
@@ -84,10 +84,8 @@ class Maze:
         # previous levels
         self.currentLevel = self.board
 
-
-        self.playerCoords = self.entryCoords
-        self.player = Player(self)
-        self.place_player()
+        self.player = None
+        self.init_player()
 
 
     def create_board(self):
@@ -158,13 +156,13 @@ class Maze:
             for spot in row:
                 spot = spot.content
                 if type(spot) == str:
-                    if spot is content["WALL"]:
+                    if spot == content["WALL"]:
                         color = WALL_COL 
-                    elif spot is content["FREE"]:
+                    elif spot == content["FREE"]:
                         color = BACK_COL
-                    elif spot is content["ENTRY"]:
+                    elif spot == content["ENTRY"]:
                         color = ENTRY_COL
-                    elif spot is content["EXIT"]:
+                    elif spot == content["EXIT"]:
                         color = EXIT_COL
 
                 elif isinstance(spot, Player):
@@ -205,59 +203,89 @@ class Maze:
         self.place((x, y), content["ENTRY"])
         self.entryCoords = (x, y)
 
-    # redundant?
-    def place_player(self):
+
+    def init_player(self):
         if self.entryCoords is not None:
+
             x = self.entryCoords[0]
             y = self.entryCoords[1]
             
             self.place((x, y), content["PLAYER"])
+            self.player = Player(self, x, y)
 
-            self.player.x = x
-            self.player.y = y
+            self.playerCoords = self.entryCoords
         else:
             print("Player could not be placed")
 
-    def get(self, coords):
-        
-        x = coords[0]
-        y = coords[1]
 
-        return self.board[y][x]
+    def get(self, coords):
+        if self.checkCoords(coords):
+            x = coords[0]
+            y = coords[1]
+
+            return self.board[y][x]
+        else:
+            print("There is nothing here")
+            return None
 
     def place(self, coords, thing):
-        if thing in content.values():
+        if thing in content.values() and self.checkCoords(coords):
             x = coords[0]
             y = coords[1]
 
             self.board[y][x] = Cell(x, y, thing)
+
+            if thing is content["PLAYER"]:
+                self.playerCoords = (x, y)
         else:
             print("Thing can not be placed")
 
 
-    def isFree(self, coords):
-        if coords[0] <= self.size and coords[1] <= self.size:
-            toCheck = self.get(coords)
+    def checkCoords(self, coords):
+        xOk = coords[0] in range(0, self.size)
+        yOk = coords[1] in range(0, self.size)
 
-            if toCheck is content["WALL"]:
+        return xOk and yOk
+
+    def isFree(self, coords):
+        if self.checkCoords(coords):
+            print("checking coords ", coords)
+            toCheck = self.get(coords).content
+
+            if toCheck == content["WALL"]:
                 return False
-            elif toCheck is content["FREE"]:
+            elif toCheck == content["FREE"]:
                 return True
             # if enemy ...
         else:
             return False
+    
     # playercoords?
     def movePlayer(self, coords):
-        self.place(self.playerCoords, self.freeSpot)
-        self.place(coords, self.player)
+        self.place(self.playerCoords, content["FREE"])
+        self.place(coords, content["PLAYER"])
 
-        self.player.setPosition(coords)
+        self.playerCoords = coords
 
 
+# TODO multiple things in one cell
 class Cell:
     def __init__(self, x, y, c = content["FREE"]):
-        self.content = c
+        self.content = []
 
         self.coords = (x, y)
+    
+    def add(self, newcont):
+        if newcont in content:
+            self.content += newcont
+        else:
+            print("Invalid content")
+            
+    def get(self):
+        if content["PLAYER"] in self.content:
+            return content["PLAYER"]
+        else:
+            return self.content[-1]
+
 
 from main import *
