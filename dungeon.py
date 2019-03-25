@@ -6,6 +6,12 @@ from setup import *
 
 from random import randint
 
+pygame.font.init()
+
+tooltipFont = pygame.font.SysFont("Liberation Sans", 40, bold=1)
+
+
+
 class Creature:
     def __init__(self, x, y):
         self.x = x
@@ -44,7 +50,6 @@ class Player(Creature):
         coords = self.dir_to_coor(direction)
 
         if self.maze.isFree(coords):
-            print("moving..")
             self.maze.place(coords, content["PLAYER"])
             self.maze.get((self.x, self.y)).remove(content["PLAYER"])
             self.setPos(coords)
@@ -69,7 +74,6 @@ class Maze:
         self.baseLocations = []
 
 
-        
         self.free = content["FREE"]
         self.exit = content["EXIT"]
         self.exitCoords = None
@@ -78,16 +82,27 @@ class Maze:
         self.entryCoords = None
 
         # initialize the maze
+        #self.create_board()
+        #self.create_maze()
+        #self.place_exits()
+
+        # previous levels TODO
+        self.pastLevels = ()
+
+        self.player = None
+        #self.init_player()
+
+        self.new_level()
+
+    def new_level(self):
+        self.board = []
+        self.freeLocations = []
+        self.baseLocations = []
         self.create_board()
         self.create_maze()
         self.place_exits()
-
-        # previous levels TODO
-        self.currentLevel = self.board
-
-        self.player = None
         self.init_player()
-
+        # TODO self.pastLevels.append(board)
     # ~~~~~~~ INIT ~~~~~~~~
     def create_board(self):
         for y in range(0, self.size):
@@ -182,7 +197,10 @@ class Maze:
             y = self.entryCoords[1]
             
             self.place((x, y), content["PLAYER"])
-            self.player = Player(self, x, y)
+            if self.player == None:
+                self.player = Player(self, x, y)
+
+            self.player.setPos((x, y))
 
             self.playerCoords = self.entryCoords
         else:
@@ -232,15 +250,16 @@ class Maze:
     def place(self, coords, thing):
         if (thing in content.values() and self.checkCoords(coords)):
             spot = self.get(coords)
-            if spot is not None:
-                x = coords[0]
-                y = coords[1]
+            
+            x = coords[0]
+            y = coords[1]
+            if spot is None:
+
 
                 self.board[y][x] = Cell(x, y, thing)
-
+            else:
                 if thing is content["PLAYER"]:
                     self.playerCoords = (x, y)
-            else:
                 spot.add(thing)
         else:
             print("Thing can not be placed")
@@ -259,25 +278,49 @@ class Maze:
 
             if toCheck == content["WALL"]:
                 return False
-            elif toCheck == content["FREE"]:
+            elif toCheck == content["FREE"] or toCheck == content["EXIT"] or toCheck == content["ENTRY"]:
                 return True
             # if enemy ...
         else:
             return False
     
-    # playercoords?
+    # TODO USELESS
     def movePlayer(self, coords):
-        self.place(self.playerCoords, content["FREE"])
+        self.place(self.playerCoords, content["FREE"]) # bullshit
         self.place(coords, content["PLAYER"])
 
         self.playerCoords = coords
 
+    def is_player_on(self, place):
+        playerCoords = self.get(self.playerCoords).get(skipPlayer=True)
+
+        # TODO nefunguje s ENTRY
+        if playerCoords == place:
+            return True
+        else:
+            return False
+
+    def exitLevel(self):
+        if self.is_player_on(content["EXIT"] or self.is_player_on(content["ENTRY"])):
+            print("entering new level")
+            self.new_level()
+
+    def tooltipChecker(self):
+        if self.playerCoords == self.exitCoords or self.playerCoords == self.entryCoords:
+            tooltip = tooltipFont.render("[e]xit", 1, YELLOW)
+            
+            textsize = tooltipFont.size("[e]xit")
+
+            place = (WINDOW_WIDTH / 2 - textsize[0] / 2, GRID_SIZE/4)
+
+            screen.blit(tooltip, place)
+
+        
 
 # TODO multiple things in one cell
 class Cell:
     def __init__(self, x, y, c=content["FREE"]):
         self.content = [c]
-
         self.coords = (x, y)
     
     def add(self, newcont):
@@ -292,12 +335,14 @@ class Cell:
             self.content.remove(oldcont)
 
         if len(self.content) < 1:
-            print("adding filler")
             self.add(content["FREE"])
 
-    def get(self):
+    def get(self, skipPlayer=False):
         if content["PLAYER"] in self.content:
-            return content["PLAYER"]
+            if skipPlayer:
+                return self.content[-2]
+            else:
+                return content["PLAYER"]
         else:
             return self.content[-1]
 

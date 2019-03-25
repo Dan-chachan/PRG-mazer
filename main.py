@@ -13,13 +13,9 @@ pygame.display.set_caption("Mazerr")
 
 
 
-
-# TODO replace coordinant separation by self.get(coords)
-
-
 new_maze = Maze()
 
-pretty_print(new_maze.board)
+#pretty_print(new_maze.board)
 
 
 while not done:
@@ -35,9 +31,14 @@ while not done:
                 new_maze.player.move('L')
             elif event.key == pygame.K_RIGHT:
                 new_maze.player.move('R')
+            elif event.key == pygame.K_e:
+                new_maze.exitLevel()
 
     screen.fill(DEEP_PURPLE)
+
     new_maze.draw()
+    new_maze.tooltipChecker()
+
     pygame.display.flip()
 
     clock.tick(60)
