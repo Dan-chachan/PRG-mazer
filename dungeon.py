@@ -21,6 +21,21 @@ class Creature:
         self.str = 0
         self.dex = 0
 
+        self.defending = False
+
+    def getAttacked(self, anAttack):
+        dmg = anAttack[0]
+        hitChance = anAttack[1] - self.dex/100
+
+        chance = randint(0, 100)/100
+
+        # hit
+        if hitChance >= chance:
+            if self.defending:
+                self.hp -= dmg/2
+        # else?
+
+    # move to player?
     def dir_to_coor(self, direction):
         x = self.x
         y = self.y
@@ -35,8 +50,50 @@ class Creature:
 
         return (x, y)
 
+class Orc(Creature):
+    def __init__(self, maze, x, y):
+        #super.__init__(self, x, y)
+        self.x = x
+        self.y = y
+
+        self.hp = 40
+        self.str = 20
+        self.dex = 5
+
+        # redundant?
+        self.maze = maze
+
+class Skeleton(Creature):
+    def __init__(self, maze, x, y):
+        #super.__init__(x, y)
+        self.x = x
+        self.y = y
+
+        self.hp = 30
+        self.str = 10
+        self.dex = 10
+
+        # redundant?
+        self.maze = maze
+
+class Slime(Creature):
+    def __init__(self, maze, x, y):
+        #super.__init__(self, x, y)
+        self.x = x
+        self.y = y
+
+        self.hp = 20
+        self.str = 5
+        self.dex = 20
+
+        # redundant?
+        self.maze = maze
+
+
 class Player(Creature):
     def __init__(self, maze, x, y):
+        # redundant?
+        # super.__init__()
         self.x = x
         self.y = y
 
@@ -53,21 +110,49 @@ class Player(Creature):
             self.maze.place(coords, content["PLAYER"])
             self.maze.get((self.x, self.y)).remove(content["PLAYER"])
             self.setPos(coords)
-        else:
-            print("not moving..")
 
     def setPos(self, coords):
         self.x = coords[0]
         self.y = coords[1]
 
+    def attack(self):
+        atType = input("[Q]UICK | [H]EAVY").lower()
+
+        if atType == "q":
+            dmgCoef = randint(7, 10) / 10
+            hitChance = 1.0
+        elif atType == "h":
+            dmgCoef = randint(10, 13) / 10
+            hitChance = 0.8
+        else:
+            print("You got confused!")
+            dmgCoef = 0
+            hitChance = 0
+
+        anAttack = dmgCoef + self.str / 100, hitChance
+        return anAttack
+
+
+    def doBattle(self):
+        # draw text
+        action = input("What to do?\n", 
+                        "[A]TTACK | [D]EFEND | [H]EAL | [F]LEE").lower()
+
+        if action in "adhf":
+            # do battle stuff
+            return
+        else:
+            print("You got confused!")
+        
 
 class Maze:
     def __init__(self):
         self.size = MAZE_SIZE
         
         global content
-        # redundant?
-        self.content = content
+
+        # redundant.
+        #self.content = content
 
         self.board = []
         self.freeLocations = []
@@ -81,10 +166,6 @@ class Maze:
         self.entrance = content["ENTRY"]
         self.entryCoords = None
 
-        # initialize the maze
-        #self.create_board()
-        #self.create_maze()
-        #self.place_exits()
 
         # previous levels TODO
         self.pastLevels = ()
@@ -102,6 +183,9 @@ class Maze:
         self.create_maze()
         self.place_exits()
         self.init_player()
+        self.getFreeLocations()
+        print(self.freeLocations)
+        self.place_enemies()
         # TODO self.pastLevels.append(board)
     # ~~~~~~~ INIT ~~~~~~~~
     def create_board(self):
@@ -190,6 +274,13 @@ class Maze:
         self.place((x, y), content["ENTRY"])
         self.entryCoords = (x, y)
 
+    def getFreeLocations(self):
+        for y in range(0, self.size):
+            for x in range(0, self.size):
+                if self.get((x, y)).get() == content["FREE"]:
+                    self.freeLocations.append((x, y))
+
+
     def init_player(self):
         if self.entryCoords is not None:
 
@@ -205,7 +296,36 @@ class Maze:
             self.playerCoords = self.entryCoords
         else:
             print("Player could not be placed")
+    
+    def place_enemies(self, difficulty=0):
+        global enemy
+
+        for e in enemy.values():
+
+            if e == enemy["ORC"]:
+                minAmount = 0 + difficulty
+                maxAmount = 2 + difficulty
+            elif e == enemy["SKELETON"]:
+                minAmount = 2 + difficulty
+                maxAmount = 4
+            elif e == enemy["SLIME"]:
+                minAmount = 3 - difficulty if difficulty < 3 else 0
+                maxAmount = 5 - difficulty if difficulty < 5 else 0
+            # TODO make better!
+
+            amount = randint(minAmount, maxAmount)
+            spot = self.getRandFree()
+
+            while (amount > 0):
+                if e == enemy["ORC"]:
+                    o = Orc(self, spot[0], spot[1])
+                    self.place(spot, enemy["ORC"])
+
     # ~~~~~~~ INIT ~~~~~~~~
+    def getRandFree(self):
+        free = self.freeLocations[randint(0, len(self.freeLocations)-1)]
+        return free
+
 
     def draw(self):
        
@@ -307,15 +427,17 @@ class Maze:
 
     def tooltipChecker(self):
         if self.playerCoords == self.exitCoords or self.playerCoords == self.entryCoords:
-            tooltip = tooltipFont.render("[e]xit", 1, YELLOW)
+            tooltip = tooltipFont.render("[e]", 1, BLACK)
             
-            textsize = tooltipFont.size("[e]xit")
+            textsize = tooltipFont.size("[e]")
 
             place = (WINDOW_WIDTH / 2 - textsize[0] / 2, GRID_SIZE/4)
 
             screen.blit(tooltip, place)
 
-        
+    #def battle(self, enemy):
+    #    while (player.hp >= 0 and enemy.hp >= 0):
+            
 
 # TODO multiple things in one cell
 class Cell:
